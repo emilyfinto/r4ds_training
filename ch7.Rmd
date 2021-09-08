@@ -1,0 +1,113 @@
+---
+title: "Ch7"
+author: "Emily Finto"
+date: "9/8/2021"
+output: html_document
+---
+
+# 7. Exploratory Data Analysis
+
+```{r packages}
+library(tidyverse)
+install.packages(c("nycflights13","gapminder","Lahman"))
+library(nycflights13)
+library(gapminder)
+library(Lahman)
+```
+
+##7.3 Visualizing Distributions
+```{r visualizations, echo=FALSE}
+ggplot(diamonds) +
+  geom_bar(aes(x=cut))
+
+ggplot(diamonds)+
+  geom_histogram(aes(x=carat),binwidth=0.5)
+smaller<- diamonds %>%
+  filter(carat<3)
+ggplot(smaller, aes(x=carat))+
+  geom_histogram(binwidth=0.1)
+
+ggplot(smaller, aes(x=carat, color=cut))+
+  geom_freqpoly(binwidth=0.1)
+ggplot(smaller,aes(x=carat))+
+  geom_histogram(binwidth=0.01)
+```
+###spotting and removing outliers
+```{r outliers, echo=FALSE}
+ggplot(diamonds)+
+  geom_histogram(aes(x=y), binwidth=0.5)
+ggplot(diamonds)+
+  geom_histogram(aes(x=y), binwidth=0.5)+
+  coord_cartesian(ylim=c(0,50))
+
+unusual <- diamonds %>%
+  filter(y<3 | y>20) %>%
+  select(price,x,y,z) %>%
+  arrange(y)
+unusual
+```
+
+It is important to look at outliers both visually and in the table. We can see these outliers and also note that the unusual ones may be inaccurate points. For example, diamonds cannot have a dimension, measured by y, of 0mm. Additionally, the diamonds that are listed with huge dimensions are not paired with prices that would make sense, they should be much more expensive.
+
+##7.4 Missing Values
+replace the missing values with NA
+```{r missing values practice}
+diamonds2 <- diamonds %>%
+  mutate(y=ifelse(y<3 | y>20, NA, y))
+view(diamonds2)
+```
+
+ggplot2 gives you a warning when there are missing values from your plot. You can hide this warning with the "na.rm=TRUE" command.
+```{r missing}
+ggplot(diamonds2, aes(x=x, y=y))+
+  geom_point()
+ggplot(diamonds2, aes(x=x, y=y))+
+  geom_point(na.rm=TRUE)
+```
+
+Sometimes missing values represent something else. For example, in nycflights13, the missing values in dep_time mean that a flight was cancelled. Make a new variable to compare the scheduled departure times for cancelled and non-cancelled times:
+```{r cancelled flights}
+nycflights13::flights %>%
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>%
+  ggplot(aes(sched_dep_time))+
+    geom_freqpoly(aes(colour=cancelled), binwidth=1/4)
+```
+
+##Look at covariation
+We want to look at how price varies within each cut. Freqpoly doesn't help because the counts differ so much that it's hard to see the smaller values. So we swap the y-axis and display "..density.."
+```{r covariation}
+ggplot(diamonds, aes(x=price, y=..density..))+
+  geom_freqpoly(aes(color=cut), binwidth=500)
+
+ggplot(diamonds, aes(x=cut, y=price))+
+  geom_boxplot()
+```
+##reorder variables
+```{r how to reorder}
+ggplot(mpg, aes(x=class, y=hwy))+
+  geom_boxplot()
+
+ggplot(mpg, aes(x=class, y=hwy))+
+  geom_boxplot(aes(x=reorder(class, hwy, FUN=median), y=hwy))
+
+
+ggplot(mpg, aes(x=class, y=hwy))+
+  geom_boxplot(aes(x=reorder(class, hwy, FUN=median), y=hwy))+
+  coord_flip()
+```
+##Exercises
+```{r 7.5 exercises}
+nycflights::flights %>%
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %%100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>%
+  ggplot()+
+    geom_boxplot(aes(y=sched_dep_time, x=cancelled))
