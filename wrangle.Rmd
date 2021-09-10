@@ -1,0 +1,149 @@
+---
+title: "wrangle"
+author: "Emily Finto"
+date: "9/8/2021"
+output: html_document
+---
+
+#Wrangle
+How to clean and organize your data to prepare it for analysis
+
+You will need the following packages:
+```{r packages}
+
+library(tidyverse)
+library(nycflights13)
+library(Lahman)
+library(gapminder)
+library(readr)
+```
+
+##10. Tibbles
+```{r intro to tibbles}
+as_tibble(iris)
+
+tibble(
+  x = 1:5,
+  y = 1,
+  z = x^2 + y
+)
+
+tb <- tibble(
+  `:)` = "smile",
+  ` ` = "space",
+  `2000` = "number"
+)
+tb
+
+tribble(
+  ~x, ~y, ~z,
+  #--|--|----
+  "a", 2, 3.6,
+  "b",1, 8.5
+)
+
+##subsetting
+df <- tibble(
+  x = runif(5),
+  y = runif(5)
+)
+###Extract by name
+df$x
+df[["x"]]
+###Extract by position
+df[[1]]
+###use them in a pipe
+df %>% .$x
+df %>% .[["x"]]
+
+```
+
+###Older Code
+not all data works with tibbles
+```{r older code}
+class(as.data.frame(tb))
+```
+
+##11. Data Import
+```{reading in data}
+#library(readr)
+heights <- read_csv("heights.txt")
+view(heights)
+```
+
+parsing:
+```{r parsing}
+parse_integer(c("1","231",".","456"), na=".")
+
+#changing the default of "." to "," for parsing numbers
+parse_double("1.23")
+
+parse_double("1,23", locale=locale(decimal_mark=","))
+
+#parse factors, a vector of known levels
+fruit <- c("apple","banana")
+parse_factor(c("apple","banana","bananana"), levels=fruit)
+
+challenge <- read_csv(
+  readr_example("challenge.csv"),
+  col_types = cols(
+    x=col_double(),
+    y=col_date()
+  )
+)
+tail(challenge)
+```
+
+##12. Tidy data
+These are just examples because I cannot access the example tables.
+
+###Pivot example:
+tidy4a <- table4a %>%
+  pivot_longer(c(`1999`,`2000`), names_to="year", values_to="cases")
+tidy4b <- table4b %>%
+  pivot_longer(c(`1999`,`2000`), names_to="year", values_to="population")
+left_join(tidy4a, tidy4b)
+
+###Separate example:
+table3 %>%
+  separate(rate, into=c("cases", "population"), sep="/", convert=TRUE)
+
+Separate defaults to separating the values at non-alphanumeric characters, but you can specify where you want the columns to break. Additionally, using convert=TRUE has R assess what type of value the new column is (ie. string, integer), instead of the default which keeps the new columns the same as the original.
+
+table3 %>%
+  separate(year, into=c("century", "year"), sep=2)
+
+you can also separate based on what digit you want to separate. Positive numbers count from the beginning of the value, negative numbers start counting from the end.
+
+###Unite
+table5 %>%
+  unite(new, century, year, sep="")
+
+R defaults to uniting values with an underscore between them, use the sep="" command to get rid of the underscore.
+```{r tidying case study}
+#data from WHO
+who <- read_csv("TB_provisional_notifications_2021-09-09.csv")
+
+who1 <- who %>%
+  pivot_longer(
+    cols=m_01:q_4,
+    names_to = "key",
+    values_to = "cases",
+    values_drop_na = TRUE
+  )
+who1
+
+#realized this is different data, can't find the original...
+
+````
+##13. Relational data
+looks at options for joins
+
+##14. Strings
+How to handle string variables like counting characters, combining, subsetting, and edit it generally (ie. changing it all to lowercase). You can specify the language as well with locale=[language abbreviation]. It also reviews how to find letters or words within a list of values.
+
+
+
+
+
+
