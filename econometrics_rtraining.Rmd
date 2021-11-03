@@ -1,0 +1,508 @@
+---
+title: "econometrics_rtraining"
+author: "Emily Finto"
+date: "11/2/2021"
+output: html_document
+---
+```{r}
+library_list <- c(
+  "AER",
+  "MASS",
+  "dplyr",
+  "readxl",
+  "scales",
+  "stargazer",
+  "mvtnorm",
+  "plm",
+  "rddtools",
+  "tidyr",
+  "dynlm",
+  "forecast",
+  "quantmod",
+  "urca",
+  "orcutt",
+  "nlme",
+  "vars",
+  "fGarch"
+)
+
+for(library in library_list){
+  
+  if(!require(library, character.only = TRUE)){
+    install.packages(library, dependencies = TRUE, repos = "http://cran.us.r-project.org")
+    require(library, character.only = TRUE )
+    
+  }
+}
+
+```
+
+#Ch 2. Probability Theory
+##2.1 Random Variables and Probability Distributions
+```{r 2_1_RandomVariables_ProbabilityDistributions, echo=FALSE}
+probability <- rep(1/6, 6)
+
+plot(probability,
+     xlab= "outcomes",
+     main="Probability Distribution")
+
+cum_probability <- cumsum(probability)
+
+plot(cum_probability,
+     xlab="outcomes",
+     main="Cumulative Probability Distribution")
+
+#example: tossing a coin and observing the Bernoulli distributed var. What is the probability that we observed Head five times (k=5) when tossing the coin ten times with prob=0.5?
+dbinom(x=5,
+       size=10,
+       prob=0.5)
+
+#compute P(4 <= k <= 7)
+sum(dbinom(x=4:7, size=10, prob=0.5))
+pbinom(size=10, prob=0.5, q=7) - pbinom(size=10, prob=0.5, q=3)
+
+#In this example, there are 11 possible outcomes for k.
+k <- 0:10
+k
+probability <- dbinom(x=k,
+                      size=10,
+                      prob=0.5)
+plot(x=k,
+     y=probability,
+     main="Probability Distribution Function")
+
+#plot cumulative probabilities
+prob <- pbinom(q=k,
+               size=10,
+               prob=0.5)
+
+plot(x=k,
+     y=prob,
+     main="Cumulative Distributive Function")
+
+#Expected Value, Mean, and Variance
+mean(1:6)
+
+#sampling with replacement
+set.seed(1)
+sample(1:6, 3, replace=TRUE)
+mean(sample(1:6, 1000, replace=TRUE))
+var(1:6)
+
+#!!!!!Example
+f <- function(x) 3 / x^4
+g <- function(x) x*f(x)
+h <- function(x) x^2 * f(x)
+
+#area under the density curve
+area <- integrate(f, 
+                 lower = 1, 
+                 upper = Inf)$value
+area 
+
+#compute E(x)
+EX <- integrate(g,
+                lower=1,
+                upper=Inf)$value
+EX
+
+#compute Var(x)
+Varx <- integrate(h,
+                  lower=1,
+                  upper=Inf)$value - EX^2
+VarX
+
+#The Normal Distribution
+#define the standard normal PDF as an R function
+f <- function(x){
+  1/(sqrt(2*pi))*exp(-0.5*x^2)
+}
+
+quants <- c(-1.96, 0, 1.96)
+f(quants)
+#compare to see if the function computes standard normal densities
+f(quants)==dnorm(quants)
+
+#Chi-Squared Distribution
+#plot where df (M) = 3
+curve(dchisq(x, df=3),
+      xlim=c(0,10),
+      ylim=c(0,1),
+      col="blue",
+      ylab="",
+      main="pdf and cdf of Chi-Squared Distribution, M=3")
+curve(pchisq(x, df=3),
+      xlim=c(0,10),
+      add=TRUE,
+      col="red")
+legend("topleft",
+       c("PDF", "CDF"),
+       col=c("blue","red"),
+       lty=c(1,1))
+
+#curve shape depends on df
+curve(dchisq(x, df = 1), 
+      xlim = c(0, 15), 
+      xlab = "x", 
+      ylab = "Density", 
+      main = "Chi-Square Distributed Random Variables")
+
+# add densities for M=2,...,7 to the plot using a 'for()' loop 
+for (M in 2:7) {
+  curve(dchisq(x, df = M),
+        xlim = c(0, 15), 
+        add = T, 
+        col = M)
+}
+legend("topright", 
+       as.character(1:7), 
+       col = 1:7 , 
+       lty = 1, 
+       title = "D.F.")
+
+#the T distribution
+# plot the standard normal density
+curve(dnorm(x), 
+      xlim = c(-4, 4), 
+      xlab = "x", 
+      lty = 2, 
+      ylab = "Density", 
+      main = "Densities of t Distributions")
+
+# plot the t density for M=2, M=4, and M=25
+curve(dt(x, df = 2), 
+      xlim = c(-4, 4), 
+      col = 2, 
+      add = T)
+curve(dt(x, df = 4), 
+      xlim = c(-4, 4), 
+      col = 3, 
+      add = T)
+curve(dt(x, df = 25), 
+      xlim = c(-4, 4), 
+      col = 4, 
+      add = T)
+legend("topright", 
+       c("N(0, 1)", "M=2", "M=4", "M=25"), 
+       col = 1:4, 
+       lty = c(2, 1, 1, 1))
+#as df increases, the shape of the t distribution is closer to the normal bell curve
+
+#F distribution
+#find P(Y >= 2), for F distributed random var Y with number df=3 and denom df=14
+pf(2, df1=3, df2=14, lower.tail=F)
+#visualize this prob
+x <- c(2, seq(2, 10, 0.01), 10)
+y <- c(0, df(seq(2, 10, 0.01), 3, 14), 0)
+
+curve(df(x, 3, 14),
+     ylim=c(0, .8),
+     xlim=c(0,10),
+     ylab="Density",
+     main="Density Function")
+polygon(x, y, col="orange")
+```
+
+##2.2 Random Sampling and the Distribution of Sample Averages
+```{r 2_2_RandomSampling_DistributionSampleAverages, echo=FALSE}
+# Plot the density histogram
+hist(sample.avgs, 
+     ylim = c(0, 1.4), 
+     col = "steelblue" , 
+     freq = F, 
+     breaks = 20)
+
+# overlay the theoretical distribution of sample averages on top of the histogram
+curve(dnorm(x, sd = 1/sqrt(n)), 
+      col = "red", 
+      lwd = "2", 
+      add = T)
+
+# number of repetitions
+reps <- 10000
+
+# set degrees of freedom of a chi-Square Distribution
+DF <- 3 
+
+# sample 10000 column vectors à 3 N(0,1) R.V.S
+Z <- replicate(reps, rnorm(DF)) 
+
+# column sums of squares
+X <- colSums(Z^2)
+
+# histogram of column sums of squares
+hist(X, 
+     freq = F, 
+     col = "steelblue", 
+     breaks = 40, 
+     ylab = "Density", 
+     main = "")
+
+# add theoretical density
+curve(dchisq(x, df = DF), 
+      type = 'l', 
+      lwd = 2, 
+      col = "red", 
+      add = T)
+
+#Law of Large Numbers - Central Limit Theorem
+#coin toss example
+set.seed(1)
+N <- 30000
+Y <- sample(0:1, N, replace = T)
+
+# Calculate R_n for 1:N
+S <- cumsum(Y)
+R <- S/(1:N)
+
+# Plot the path.
+plot(R, 
+     ylim = c(0.3, 0.7), 
+     type = "l", 
+     col = "steelblue", 
+     lwd = 2, 
+     xlab = "n", 
+     ylab = "R_n",
+     main = "Converging Share of Heads in Repeated Coin Tossing")
+
+# Add a dashed line for R_n = 0.5
+lines(c(0, N), 
+      c(0.5, 0.5), 
+      col = "darkred", 
+      lty = 2, 
+      lwd = 1)
+```
+
+#Ch. 3 Review of Statistics
+```{r 3_reviewstatistics, echo=FALSE}
+#3.1 Estimations of the Population Mean
+# plot the chi_12^2 distribution
+curve(dchisq(x, df=12), 
+      from = 0, 
+      to = 40, 
+      ylab = "density", 
+      xlab = "hourly earnings in Euro")
+
+# sample from the chi_12^2 distribution, use only the first observation
+set.seed(1)
+rsamp <- rchisq(n = 100, df = 12)
+rsamp[1]
+
+#is this a good estimator? You want unbiasedness, consistency, and variance/efficiency
+
+####################
+#3.3 Hypothesis Tests Concerning the Population Mean
+##the p-value is the probability of drawing data and observing a corresponding test statistic that is at least as adverse to what is stated in the null
+# plot the standard normal density on the interval [-4,4]
+curve(dnorm(x),
+      xlim = c(-4, 4),
+      main = "Calculating a p-Value",
+      yaxs = "i",
+      xlab = "z",
+      ylab = "",
+      lwd = 2,
+      axes = "F")
+
+# add x-axis
+axis(1, 
+     at = c(-1.5, 0, 1.5), 
+     padj = 0.75,
+     labels = c(expression(-frac(bar(Y)^"act"~-~bar(mu)[Y,0], sigma[bar(Y)])),
+                0,
+                expression(frac(bar(Y)^"act"~-~bar(mu)[Y,0], sigma[bar(Y)]))))
+
+# shade p-value/2 region in left tail
+polygon(x = c(-6, seq(-6, -1.5, 0.01), -1.5),
+        y = c(0, dnorm(seq(-6, -1.5, 0.01)),0), 
+        col = "steelblue")
+
+# shade p-value/2 region in right tail
+polygon(x = c(1.5, seq(1.5, 6, 0.01), 6),
+        y = c(0, dnorm(seq(1.5, 6, 0.01)), 0), 
+        col = "steelblue")
+
+##t stat
+samplemean_act <- mean(
+  sample(0:1, 
+         prob = c(0.9, 0.1), 
+         replace = T, 
+         size = 100))
+SE_samplemean <- sqrt(samplemean_act * (1 - samplemean_act) / 100)
+mean_h0 <- 0.1
+
+tstatistic <- (samplemean_act - mean_h0) / SE_samplemean
+tstatistic
+
+# prepare empty vector for t-statistics
+tstatistics <- numeric(10000)
+
+# set sample size
+n <- 300
+
+# simulate 10000 t-statistics
+for (i in 1:10000) {
+  
+  s <- sample(0:1, 
+              size = n,  
+              prob = c(0.9, 0.1),
+              replace = T)
+  
+  tstatistics[i] <- (mean(s)-0.1)/sqrt(var(s)/n)
+  
+}
+# plot density and compare to N(0,1) density
+plot(density(tstatistics),
+     xlab = "t-statistic",
+     main = "Estimated Distribution of the t-statistic when n=300",
+     lwd = 2,
+     xlim = c(-4, 4),
+     col = "steelblue")
+
+# N(0,1) density (dashed)
+curve(dnorm(x), 
+      add = T, 
+      lty = 2, 
+      lwd = 2)
+
+##test for significance
+# compute the p-value
+pvalue <- 2 * pnorm(- abs(samplemean_act - mean_h0) / SE_samplemean)
+pvalue < 0.05
+
+# check critical value
+qnorm(p=0.975)
+
+# check whether the null is rejected using the t stat
+abs(tstatistic) > 1.96
+
+####################
+#3.4 Confidence Intervals for the Population Mean
+set.seed(1)
+sampledata <- rnorm(100, 10, 10)
+t.test(sampledata)$"conf.int"
+t.test(sampledata)
+#the sample mean is significantly different from 0 at the 5% level since My=0 is not an element of the 95% conf int and p-value is much less than 0.05 (we fail to reject the null)
+
+####################
+#3.5 Comparing Means from Different Populations
+# draw data from two different populations with equal mean
+set.seed(1)
+sample_pop1 <- rnorm(100, 10, 10)
+sample_pop2 <- rnorm(100, 10, 20)
+
+# perform a two sample t-test
+t.test(sample_pop1, sample_pop2)
+#the two-sample t test does not reject the null, the difference in the mean of the populations is different from 0
+```
+
+#Ch. 4 Linear Regression with One Regressor
+```{r 4_linearregression, echo=FALSE}
+#4.1 Simple Linear Regression
+STR <- c(15, 17, 19, 20, 22, 23.5, 25)
+TestScore <- c(680, 640, 670, 660, 630, 660, 635)
+
+plot(TestScore ~ STR)
+abline(a=713, b=-3)
+
+####################
+#4.2 Estimating the Coefficients of the Linear Regression Model
+data(CASchools)
+CASchools$STR <- CASchools$students/CASchools$teachers
+CASchools$score <- (CASchools$read + CASchools$math)/2
+avg_STR <- mean(CASchools$STR) 
+avg_score <- mean(CASchools$score)
+sd_STR <- sd(CASchools$STR) 
+sd_score <- sd(CASchools$score)
+quantiles <- c(0.10, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9)
+quant_STR <- quantile(CASchools$STR, quantiles)
+quant_score <- quantile(CASchools$score, quantiles)
+
+# gather everything in a data.frame 
+DistributionSummary <- data.frame(Average = c(avg_STR, avg_score), 
+                                  StandardDeviation = c(sd_STR, sd_score), 
+                                  quantile = rbind(quant_STR, quant_score))
+DistributionSummary
+
+plot(score~STR,
+     data=CASchools,
+     main="Scatterplot of TestScore and STR",
+     xlab="STR (X)",
+     ylab="Test Score (Y)")
+
+cor(CASchools$STR, CASchools$score)
+
+#OLS estimators
+linear_model <- lm(score~STR, data=CASchools)
+summary(linear_model)
+
+plot(score~STR,
+     data=CASchools,
+     main="Scatterplor of TestScore and STR",
+     xlab="STR (X)",
+     ylab="Test Score (Y)",
+     xlim=c(10,30),
+     ylim=c(600,700))
+abline(linear_model)
+
+####################
+#4.3 Measures of Fit
+#R-squared measures how well the variance is explained by the model. The Standard Error of the Regression (SER) measures the standard deviation of the residuals.
+
+```
+
+#Ch. 5 Hypothesis Tests and Confidence Intervals in the Simple Linear Regression Model
+```{r 5_TestsIntervals_SimpleLinearRegression, echo=FALSE}
+#5.1 Heterosckedasticity and Homoskedasticity
+# set up vector of x coordinates
+set.seed(123)
+x <- rep(c(10,15,20,25), each=25)
+# initialize vector of errors
+e <- c()
+
+# sample 100 errors such that the variance increases with x
+e[1:25] <- rnorm(25, sd = 10)
+e[26:50] <- rnorm(25, sd = 15)
+e[51:75] <- rnorm(25, sd = 20)
+e[76:100] <- rnorm(25, sd = 25)
+
+# set up y
+y <- 720 - 3.3 * x + e
+
+# Estimate the model 
+mod <- lm(y ~ x)
+
+# Plot the data
+plot(x = x, 
+     y = y, 
+     main = "An Example of Heteroskedasticity",
+     xlab = "Student-Teacher Ratio",
+     ylab = "Test Score",
+     cex = 0.5, 
+     pch = 19, 
+     xlim = c(8, 27), 
+     ylim = c(600, 710))
+
+# Add the regression line to the plot
+abline(mod, col = "darkred")
+
+# Add boxplots to the plot
+boxplot(formula = y ~ x, 
+        add = TRUE, 
+        at = c(10, 15, 20, 25), 
+        col = alpha("gray", 0.4), 
+        border = "black")
+#the variance of test scores increases as the student-teacher ratio increases
+#Computation of Heteroskedasticity-Robust Standard Errors - set type to "HC1"
+
+vcov <- vcovHC(linear_model, type="HC1")
+vcov
+#^gives variance-covariance matrix of coefficient estimates. We want the square root of the diagonal of the matrix, the standard error estimates
+
+robust_se <- sqrt(diag(vcov))
+robust_se
+
+coeftest(linear_model, vcov.=vcov)
+```
+
+
+
