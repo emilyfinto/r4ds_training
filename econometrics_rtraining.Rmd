@@ -110,7 +110,7 @@ EX
 Varx <- integrate(h,
                   lower=1,
                   upper=Inf)$value - EX^2
-VarX
+Varx
 
 #The Normal Distribution
 #define the standard normal PDF as an R function
@@ -448,11 +448,16 @@ abline(linear_model)
 #4.3 Measures of Fit
 #R-squared measures how well the variance is explained by the model. The Standard Error of the Regression (SER) measures the standard deviation of the residuals.
 
+####################
+#4.4 Least Squares Assumptions
+#1. The error term has conditional mean zero
+#2. ... are independent and identically distributed draws from their joint distribution
+#3. Large outliers are unlikely
 ```
 
 #Ch. 5 Hypothesis Tests and Confidence Intervals in the Simple Linear Regression Model
 ```{r 5_TestsIntervals_SimpleLinearRegression, echo=FALSE}
-#5.1 Heterosckedasticity and Homoskedasticity
+#5.4 Heterosckedasticity and Homoskedasticity
 # set up vector of x coordinates
 set.seed(123)
 x <- rep(c(10,15,20,25), each=25)
@@ -502,7 +507,154 @@ robust_se <- sqrt(diag(vcov))
 robust_se
 
 coeftest(linear_model, vcov.=vcov)
+
+#5.5 The Gauss-Markov Theorem
+#If key assumptions hold and errors are homoskedastic, then the OLS estimator is the best linear conditionally unbiased estimator (BLUE)
 ```
+
+#Ch. 6 Regression Models with Multiple Regressors
+```{r 6_multivariablemodels, echo=FALSE}
+#6.4 OLS Assumptions in Multiple Regression
+#1. Regressors are drawn such that the i.i.d. assumption holds
+#2. The error term has a conditional mean = 0
+#3. Large outliers are unlikely
+#4. No perfect multicollinearity
+
+```
+
+#Ch. 7 Hypothesis Tests and Confidence Intervals in Multiple Regression
+see textbook
+
+#Ch. 8 Nonlinear Regression Functions
+```{r 8_nonlinear, echo=FALSE}
+#8.2 Nonlinear Functions of a Single Independent Variable
+#You can make a polynomial function
+linear_model<- lm(score ~ income, data = CASchools)
+
+quadratic_model <- lm(score ~ income + I(income^2), data = CASchools)
+coeftest(quadratic_model, vcov.=vcovHC, type="HC1")
+
+plot(CASchools$income, CASchools$score,
+     col="steelblue",
+     pch=20,
+     xlab="District Income (thousands of dollars)",
+     ylab="Test Score",
+     main="Estimated Linear and Quadratic Regression Functions")
+abline(linear_model, col="black", lwd=2)
+order_id <- order(CASchools$income)
+lines(x=CASchools$income[order_id],
+      y=fitted(quadratic_model)[order_id],
+      col="red",
+      lwd=2)
+
+#or a log
+
+#8.3 Interactions Between Independent Variables
+#b/w two binary vars, a continuous and binary, or two continuous vars
+
+```
+
+#Ch. 9 Assessing Studies Based on Multiple Regression
+Chapter 9 gave theoretical details on possible issues with regressions including:
+- internal/external validity
+- omitted variable bias
+- misspecification of the functional form of the regression function
+- measurement errors
+- missing data and sample selection
+- simultaneous causality
+
+#Ch. 10 Regression with Panel Data
+```{r 10_paneldata, echo=FALSE}
+#10.3 Fixed Effects Regression
+# Consider model where one variable (z) is time invariant but we still want to look at the change in other variables (x).
+     # y=b0+b1x+b2z
+
+# Have individual intercepts (ai, i=1,...,n) where each of these can be understood as the fixed effect of entity i. The variation in a comes from z.
+    # a=b0+b2z
+    # Model now (10.1): y=z+b1x+u
+    
+# The fixed effects regression model:
+    # (10.3) Y=B1X+...+BkXk+a+u
+    # where a are entity-specific intercepts that capture heterogeneities across entities.
+  # Could also be written with dummy regressors:
+    # (10.4) Y=B0+B1X+...+BkXk+(gamma)2D2+(gamma)3D3+...+(gamma)nDn+u
+    
+# Can also use entity demeaned data:
+  # (mean)Y=B1(mean)X+(mean)a+(mean)u
+  # *subtract from model 10.1:
+  # Y-(mean)Y = B1(X-(mean)X)+(u-(mean)u)
+  # (squiggle)Y = B1(squiggle)X+(squiggle)u
+
+#Ex. relation between traffic fatality rates and beer taxes:
+    # FatalityRate = B1BeerTax + StateFixedEffects + u
+
+Fatalities$fatal_rate <- Fatalities$fatal / Fatalities$pop * 10000
+fatal_fe_lm_mod <- lm(fatal_rate ~ beertax + state - 1, data = Fatalities)
+fatal_fe_lm_mod
+
+#apply OLS to the demeaned data
+Fatalities_demeaned <- with(Fatalities,
+            data.frame(fatal_rate = fatal_rate - ave(fatal_rate, state),
+            beertax = beertax - ave(beertax, state)))
+summary(lm(fatal_rate~beertax-1, data=Fatalities_demeaned))
+
+#or use plm() which uses the entity-demeaned OLS algorithm, not the dummy approach
+
+fatal_fe_mod <- plm(fatal_rate ~ beertax, 
+                    data = Fatalities,
+                    index = c("state", "year"), 
+                    model = "within")
+
+# print summary using robust standard errors
+coeftest(fatal_fe_mod, vcov. = vcovHC, type = "HC1")
+
+#10.4 Regression with Time Fixed Effects
+# If there are only time fixed effects, the regression becomes:
+    # Y = B0 + B1X + (delta)B2 + ... + (delta)BT + u
+  # where T-1 dummies are included (B1 is omitted) since the model included an intercept.
+#Time and Fixed effects (ie. some things are fixed across time while others are fixed across entities):
+    # Y = B0 + B1X + (gamma)2D2 +...+ (gamma)nDT + (delta)2B2 +...+(delta)TBT + u
+
+#Ex. FatalityRates = B1BeerTax + Stateeffects + TimeEffects + u
+
+fatal_tefe_lm_mod <- lm(fatal_rate ~ beertax + state + year - 1, data = Fatalities)
+fatal_tefe_lm_mod
+
+fatal_tefe_mod <- plm(fatal_rate ~ beertax, 
+                      data = Fatalities,
+                      index = c("state", "year"), 
+                      model = "within", 
+                      effect = "twoways")
+
+coeftest(fatal_tefe_mod, vcov = vcovHC, type = "HC1")
+
+#the variables state and year are of the class factors, which the lm() function automatically converts into dummies. Excluding the intercept with "-1" means that lm() estimates the coefficients for n+(T-1) = 48-6=54 binary variables (6 years and 48 states). The plm() function only reports the coefficient on BeerTax.
+
+#10.5 The Fixed Effects Regression Assumptions and Standard Errors for Fixed Effects Regression
+#1. The error term has a conditional mean = 0
+#2. The variables and errors are i.i.d. draws from their joint distribution
+#3. Large outliers are unlikely
+#4. There is no perfect multicollinearity
+
+#Standard errors
+#In the event of heteroskedasticity and autocorrelation, you need to use heteroskedasticity and autocorrelation-consistent (HAC) standard errors, and clustered standard errors are an example of this. Clusteres standard errors are crucial in empirical applications of fixed effect models. Use the coeftest() function with vcovHC() for the plm() model, as the coeftest() automatically computes clustered se for plm() but not lm()
+class(fatal_tefe_lm_mod)
+coeftest(fatal_tefe_lm_mod, vcov = vcovHC, type = "HC1")[1, ]
+
+class(fatal_tefe_mod)
+coeftest(fatal_tefe_mod, vcov = vcovHC, type = "HC1")
+
+```
+
+#Ch. 11 Regression with a Binary Dependent Variable
+```{r 11_binarydepvar, echo=FALSE}
+#11.2 Probit and Logit Regression
+#linear probability assumes that the conditional probability function is linear
+
+
+```
+
+
 
 
 
